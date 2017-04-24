@@ -9,6 +9,7 @@ main(int argc, char **argv)
               "-prompt:f    (output is for prompt) "
               "-postfix:s   (display postfix chars) "
               "-break_len:i (break length) "
+              "-nocolor:f   (ignore colors) "
               "-color:f     (set terminal color) "
               "-dir:s       (directory to format)");
 
@@ -19,10 +20,11 @@ main(int argc, char **argv)
 
   bool        split     = ! cargs.getBooleanArg("-nosplit") && cargs.getBooleanArg("-split");
   bool        prompt    = cargs.getBooleanArg("-prompt");
-  std::string postfix   = cargs.getStringArg("-postfix");
+  std::string postfix   = cargs.getStringArg ("-postfix");
   int         break_len = cargs.getIntegerArg("-break_len");
   bool        color     = cargs.getBooleanArg("-color");
-  std::string dir       = cargs.getStringArg("-dir");
+  bool        nocolor   = cargs.getBooleanArg("-nocolor");
+  std::string dir       = cargs.getStringArg ("-dir");
 
   if (break_len <= 0)
     break_len = CDirFmt::BREAK_LEN;
@@ -50,6 +52,7 @@ main(int argc, char **argv)
   dirfmt.setPrompt(prompt);
   dirfmt.setPostfix(postfix);
   dirfmt.setBreakLen(break_len);
+  dirfmt.setNoColor(nocolor);
   dirfmt.setColor(color);
 
   // format
@@ -77,6 +80,45 @@ CDirFmt()
 
   if (colorEnv)
     promptColor_ = colorEnv;
+
+  //---
+
+  char *postfixEnv = getenv("DIRFMT_POSTFIX_COLOR");
+
+  if (postfixEnv) {
+    int i      = 0;
+    int envLen = strlen(postfixEnv);
+
+    std::string name;
+
+    while (i < envLen) {
+      // handle named color
+      if (postfixEnv[i] == '=') {
+        ++i;
+
+        std::string value;
+
+        while (i < envLen && postfixEnv[i] != ',')
+          value += postfixEnv[i++];
+
+        if (i < envLen && postfixEnv[i] == ',')
+          ++i;
+
+        if      (name == "bg")
+          postfixBgColor_ = value;
+        else if (name == "fg")
+          postfixFgColor_ = value;
+
+        name = "";
+      }
+      else {
+        name += postfixEnv[i++];
+      }
+    }
+
+    if (name != "" && postfixFgColor_ == "")
+      postfixFgColor_ = name;
+  }
 
   //---
 
@@ -238,9 +280,15 @@ format(const std::string &dir) const
 
   //---
 
-  std::string promptColorStr = colorEscape(promptColor_, prompt_);
+  std::string promptColorStr;
 
-  std::string normColorStr = colorEscape("norm", prompt_);
+  if (! isNoColor())
+    promptColorStr = colorEscape(promptColor_, prompt_);
+
+  std::string normColorStr;
+
+  if (! isNoColor())
+    normColorStr = colorEscape("norm", prompt_);
 
   //---
 
@@ -263,7 +311,12 @@ format(const std::string &dir) const
 
     //---
 
-    std::string colorStr = colorEscape(format.fg, prompt_);
+    std::string colorStr;
+
+    if (! isNoColor()) {
+      colorStr += colorEscape(format.bg, prompt_, /*bg*/true);
+      colorStr += colorEscape(format.fg, prompt_, /*bg*/false);
+    }
 
     fillStr = fillEscape(format.fill, prompt_);
 
@@ -350,17 +403,30 @@ format(const std::string &dir) const
 
   // output prompt
 
-  if (postfix_ != "")
-    std::cout << postfix_;
+  if (postfix_ != "") {
+    std::string postfixColorBgStr, postfixColorFgStr;
+
+    if (! isNoColor()) {
+      postfixColorBgStr = colorEscape(postfixBgColor_, prompt_, /*bg*/true);
+      postfixColorFgStr = colorEscape(postfixFgColor_, prompt_, /*bg*/false);
+    }
+
+    std::cout << postfixColorBgStr << postfixColorFgStr << postfix_ << normColorStr;
+  }
 }
 
 std::string
 CDirFmt::
-colorEscape(const std::string &str, bool prompt) const
+colorEscape(const std::string &str, bool prompt, bool bg) const
 {
   std::string colorStr = str;
 
-  bool bold = false;
+  //---
+
+  bool bold = (colorStr == "bold");
+  bool norm = (colorStr == "norm");
+
+  //---
 
   auto p = colorStr.find("bold-");
 
@@ -386,64 +452,79 @@ colorEscape(const std::string &str, bool prompt) const
 
   std::string ret;
 
-  // 3 fg, 4 bg
-  if (prompt) {
-    if (shellName_ == "/bin/tcsh") {
-      if (bold)
-        ret += "%{[1m%}";
-      else
-        ret += "%{[0m%}";
-
-      if (alt) {
-        if (colorStr == "black"  ) ret += "%{[90m%}";
-        if (colorStr == "red"    ) ret += "%{[91m%}";
-        if (colorStr == "green"  ) ret += "%{[92m%}";
-        if (colorStr == "yellow" ) ret += "%{[93m%}";
-        if (colorStr == "blue"   ) ret += "%{[94m%}";
-        if (colorStr == "magenta") ret += "%{[95m%}";
-        if (colorStr == "cyan"   ) ret += "%{[96m%}";
-        if (colorStr == "white"  ) ret += "%{[97m%}";
-      }
-      else {
-        if (colorStr == "black"  ) ret += "%{[30m%}";
-        if (colorStr == "red"    ) ret += "%{[31m%}";
-        if (colorStr == "green"  ) ret += "%{[32m%}";
-        if (colorStr == "yellow" ) ret += "%{[33m%}";
-        if (colorStr == "blue"   ) ret += "%{[34m%}";
-        if (colorStr == "magenta") ret += "%{[35m%}";
-        if (colorStr == "cyan"   ) ret += "%{[36m%}";
-        if (colorStr == "white"  ) ret += "%{[37m%}";
-      }
-
-      return ret;
-    }
-  }
-
   if      (term_ == "iris-ansi" || term_ == "iris-ansi-net") {
-    if (colorStr == "norm") return "[0m";
-    if (colorStr == "bold") return "[1m";
+    if      (norm)
+      ret += "[0m";
+    else if (bold)
+      ret += "[1m";
   }
   else if (term_ == "hpterm") {
-    if (colorStr == "norm") return "&v0S";
-    if (colorStr == "bold") return "&v3S";
+    if      (norm)
+      ret += "&v0S";
+    else if (bold)
+      ret += "&v3S";
   }
   else if (term_ == "xterm") {
-    if (colorStr == "norm") return "[0m";
-    if (colorStr == "bold") return "[1m";
+    if      (bold)
+      ret += "[1m";
+    else if (norm)
+      ret += "[0m";
 
     if (colorTerm_) {
-      if (colorStr == "black"  ) return "[30m";
-      if (colorStr == "red"    ) return "[31m";
-      if (colorStr == "green"  ) return "[32m";
-      if (colorStr == "yellow" ) return "[33m";
-      if (colorStr == "blue"   ) return "[34m";
-      if (colorStr == "magenta") return "[35m";
-      if (colorStr == "cyan"   ) return "[36m";
-      if (colorStr == "white"  ) return "[37m";
+      if (alt) {
+        if (bg) {
+          if      (colorStr == "black"  ) ret += "[100m";
+          else if (colorStr == "red"    ) ret += "[101m";
+          else if (colorStr == "green"  ) ret += "[102m";
+          else if (colorStr == "yellow" ) ret += "[103m";
+          else if (colorStr == "blue"   ) ret += "[104m";
+          else if (colorStr == "magenta") ret += "[105m";
+          else if (colorStr == "cyan"   ) ret += "[106m";
+          else if (colorStr == "white"  ) ret += "[107m";
+        }
+        else {
+          if      (colorStr == "black"  ) ret += "[90m";
+          else if (colorStr == "red"    ) ret += "[91m";
+          else if (colorStr == "green"  ) ret += "[92m";
+          else if (colorStr == "yellow" ) ret += "[93m";
+          else if (colorStr == "blue"   ) ret += "[94m";
+          else if (colorStr == "magenta") ret += "[95m";
+          else if (colorStr == "cyan"   ) ret += "[96m";
+          else if (colorStr == "white"  ) ret += "[97m";
+        }
+      }
+      else {
+        if (bg) {
+          if      (colorStr == "black"  ) ret += "[40m";
+          else if (colorStr == "red"    ) ret += "[41m";
+          else if (colorStr == "green"  ) ret += "[42m";
+          else if (colorStr == "yellow" ) ret += "[43m";
+          else if (colorStr == "blue"   ) ret += "[44m";
+          else if (colorStr == "magenta") ret += "[45m";
+          else if (colorStr == "cyan"   ) ret += "[46m";
+          else if (colorStr == "white"  ) ret += "[47m";
+        }
+        else {
+          if      (colorStr == "black"  ) ret += "[30m";
+          else if (colorStr == "red"    ) ret += "[31m";
+          else if (colorStr == "green"  ) ret += "[32m";
+          else if (colorStr == "yellow" ) ret += "[33m";
+          else if (colorStr == "blue"   ) ret += "[34m";
+          else if (colorStr == "magenta") ret += "[35m";
+          else if (colorStr == "cyan"   ) ret += "[36m";
+          else if (colorStr == "white"  ) ret += "[37m";
+        }
+      }
     }
   }
 
-  return "";
+  if (ret == "")
+    return "";
+
+  if (prompt && isTcsh())
+    ret = escapeTcsh(ret);
+
+  return ret;
 }
 
 std::string
@@ -456,8 +537,8 @@ fillEscape(const std::string &str, bool prompt) const
   std::string ret;
 
   if (prompt) {
-    if (shellName_ == "/bin/tcsh") {
-      //return "%{]11;" + str + "\\%}";
+    if (isTcsh()) {
+      //return escapeTcsh("]11;" + str + "\\");
       return "";
     }
   }
@@ -471,4 +552,20 @@ fillEscape(const std::string &str, bool prompt) const
   }
 
   return "";
+}
+
+bool
+CDirFmt::
+isTcsh() const
+{
+  auto p = shellName_.find("tcsh");
+
+  return (p != std::string::npos);
+}
+
+std::string
+CDirFmt::
+escapeTcsh(const std::string &str) const
+{
+  return "%{" + str + "%}";
 }

@@ -48,6 +48,9 @@ class CDirFmt {
   int breakLen() const { return breakLen_; }
   void setBreakLen(int i) { breakLen_ = i; }
 
+  bool isNoColor() const { return nocolor_; }
+  void setNoColor(bool b) { nocolor_ = b; }
+
   bool isColor() const { return color_; }
   void setColor(bool b) { color_ = b; }
 
@@ -62,9 +65,13 @@ class CDirFmt {
     formats_.emplace_back(name, value, bg, fg, fill);
   }
 
-  std::string colorEscape(const std::string &colorStr, bool prompt) const;
+  std::string colorEscape(const std::string &colorStr, bool prompt, bool bg=false) const;
 
   std::string fillEscape(const std::string &colorStr, bool prompt) const;
+
+  bool isTcsh() const;
+
+  std::string escapeTcsh(const std::string &str) const;
 
  private:
   typedef std::vector<Format> Formats;
@@ -73,6 +80,7 @@ class CDirFmt {
   bool        prompt_   { false };
   std::string postfix_;
   int         breakLen_ { -1 };
+  bool        nocolor_  { false };
   bool        color_    { false };
   std::string env_;
   int         envLen_;
@@ -80,6 +88,8 @@ class CDirFmt {
   bool        colorTerm_ { true };
   std::string shellName_;
   std::string promptColor_;
+  std::string postfixBgColor_;
+  std::string postfixFgColor_;
   Formats     formats_;
 };
 
