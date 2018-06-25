@@ -54,6 +54,9 @@ class CDirFmt {
   bool isColor() const { return color_; }
   void setColor(bool b) { color_ = b; }
 
+  bool isClipLeft() const { return clipLeft_; }
+  void setClipLeft(bool b) { clipLeft_ = b; }
+
   void format(const std::string &dir) const;
 
  private:
@@ -86,6 +89,7 @@ class CDirFmt {
   int         envLen_;
   std::string term_;
   bool        colorTerm_ { true };
+  bool        clipLeft_ { false };
   std::string shellName_;
   std::string promptColor_;
   std::string postfixBgColor_;

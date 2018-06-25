@@ -11,6 +11,7 @@ main(int argc, char **argv)
               "-break_len:i (break length) "
               "-nocolor:f   (ignore colors) "
               "-color:f     (set terminal color) "
+              "-clip_left:f (clip on left of directory) "
               "-dir:s       (directory to format)");
 
   cargs.parse(&argc, argv);
@@ -24,7 +25,11 @@ main(int argc, char **argv)
   int         break_len = cargs.getIntegerArg("-break_len");
   bool        color     = cargs.getBooleanArg("-color");
   bool        nocolor   = cargs.getBooleanArg("-nocolor");
+  bool        clip_left = cargs.getBooleanArg("-clip_left");
   std::string dir       = cargs.getStringArg ("-dir");
+
+  if (! cargs.isBooleanArgSet("-clip_left") && getenv("DIRFMT_CLIP_LEFT"))
+    clip_left = true;
 
   if (break_len <= 0)
     break_len = CDirFmt::BREAK_LEN;
@@ -54,6 +59,7 @@ main(int argc, char **argv)
   dirfmt.setBreakLen(break_len);
   dirfmt.setNoColor(nocolor);
   dirfmt.setColor(color);
+  dirfmt.setClipLeft(clip_left);
 
   // format
   dirfmt.format(directory);
@@ -346,7 +352,7 @@ format(const std::string &dir) const
     int len2 = len1 + part.str.size();
 
     // if new string exceeds break length then elide or truncate
-    if (len2 >= breakLen_) {
+    if (len2 >= breakLen()) {
       // split onto new line
       if (split_) {
         newline = true;
@@ -356,9 +362,16 @@ format(const std::string &dir) const
       else {
         elide = true;
 
-        std::cout << part.str.substr(0, breakLen_ - len1 - 3);
+        int clip_len = breakLen() - len1 - 3;
 
-        std::cout << "...";
+        if (isClipLeft()) {
+          std::cout << "...";
+          std::cout << part.str.substr(part.str.size() - clip_len, clip_len);
+        }
+        else {
+          std::cout << part.str.substr(0, clip_len);
+          std::cout << "...";
+        }
       }
     }
     else
@@ -377,7 +390,7 @@ format(const std::string &dir) const
     std::cout << "\012\013";
 
 #if 0
-  if (len > breakLen_ + 3) {
+  if (len > breakLen() + 3) {
     // split onto new line
     if (split_) {
       std::cout << directory;
@@ -385,8 +398,8 @@ format(const std::string &dir) const
     }
     else {
       // TODO: don't split in color
-      int len1 = (breakLen_ + 3)/2;
-      int len2 = breakLen_ + 3 - len1;
+      int len1 = (breakLen() + 3)/2;
+      int len2 = breakLen() + 3 - len1;
 
       std::string str1 = directory.substr(0, len1);
       std::string str2 = directory.substr(len - len2);
