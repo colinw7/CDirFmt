@@ -54,8 +54,8 @@ class CDirFmt {
   bool isColor() const { return color_; }
   void setColor(bool b) { color_ = b; }
 
-  bool isClipLeft() const { return clipLeft_; }
-  void setClipLeft(bool b) { clipLeft_ = b; }
+  const std::string &clip() const { return clip_; }
+  void setClip(const std::string &s) { clip_ = s; }
 
   void format(const std::string &dir) const;
 
@@ -79,17 +79,17 @@ class CDirFmt {
  private:
   typedef std::vector<Format> Formats;
 
-  bool        split_    { false };
-  bool        prompt_   { false };
+  bool        split_     { false };
+  bool        prompt_    { false };
   std::string postfix_;
-  int         breakLen_ { -1 };
-  bool        nocolor_  { false };
-  bool        color_    { false };
+  int         breakLen_  { -1 };
+  bool        nocolor_   { false };
+  bool        color_     { false };
   std::string env_;
   int         envLen_;
   std::string term_;
   bool        colorTerm_ { true };
-  bool        clipLeft_ { false };
+  std::string clip_      { "right" };
   std::string shellName_;
   std::string promptColor_;
   std::string postfixBgColor_;

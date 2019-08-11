@@ -11,7 +11,7 @@ main(int argc, char **argv)
               "-break_len:i (break length) "
               "-nocolor:f   (ignore colors) "
               "-color:f     (set terminal color) "
-              "-clip_left:f (clip on left of directory) "
+              "-clip:s      (clip left, right, middle of all of directory) "
               "-dir:s       (directory to format)");
 
   cargs.parse(&argc, argv);
@@ -25,11 +25,11 @@ main(int argc, char **argv)
   int         break_len = cargs.getIntegerArg("-break_len");
   bool        color     = cargs.getBooleanArg("-color");
   bool        nocolor   = cargs.getBooleanArg("-nocolor");
-  bool        clip_left = cargs.getBooleanArg("-clip_left");
+  std::string clip      = cargs.getStringArg ("-clip");
   std::string dir       = cargs.getStringArg ("-dir");
 
-  if (! cargs.isBooleanArgSet("-clip_left") && getenv("DIRFMT_CLIP_LEFT"))
-    clip_left = true;
+  if (! cargs.isBooleanArgSet("-clip") && getenv("DIRFMT_CLIP"))
+    clip = getenv("DIRFMT_CLIP");
 
   if (break_len <= 0)
     break_len = CDirFmt::BREAK_LEN;
@@ -59,7 +59,7 @@ main(int argc, char **argv)
   dirfmt.setBreakLen(break_len);
   dirfmt.setNoColor(nocolor);
   dirfmt.setColor(color);
-  dirfmt.setClipLeft(clip_left);
+  dirfmt.setClip(clip);
 
   // format
   dirfmt.format(directory);
@@ -364,7 +364,7 @@ format(const std::string &dir) const
 
         int clip_len = breakLen() - len1 - 3;
 
-        if (isClipLeft()) {
+        if (clip() == "left") {
           std::cout << "...";
           std::cout << part.str.substr(part.str.size() - clip_len, clip_len);
         }
@@ -477,7 +477,7 @@ colorEscape(const std::string &str, bool prompt, bool bg) const
     else if (bold)
       ret += "&v3S";
   }
-  else if (term_ == "xterm") {
+  else if (term_ == "xterm" || term_ == "xterm-256color") {
     if      (bold)
       ret += "[1m";
     else if (norm)
@@ -560,7 +560,7 @@ fillEscape(const std::string &str, bool prompt) const
   }
   else if (term_ == "hpterm") {
   }
-  else if (term_ == "xterm") {
+  else if (term_ == "xterm" || term_ == "xterm-256color") {
     return "]11;" + str + "\\";
   }
 
