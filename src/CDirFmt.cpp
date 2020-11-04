@@ -477,7 +477,7 @@ colorEscape(const std::string &str, bool prompt, bool bg) const
     else if (bold)
       ret += "&v3S";
   }
-  else if (term_ == "xterm" || term_ == "xterm-256color") {
+  else if (term_ == "xterm" || term_ == "xterm-color" || term_ == "xterm-256color") {
     if      (bold)
       ret += "[1m";
     else if (norm)
@@ -560,7 +560,7 @@ fillEscape(const std::string &str, bool prompt) const
   }
   else if (term_ == "hpterm") {
   }
-  else if (term_ == "xterm" || term_ == "xterm-256color") {
+  else if (term_ == "xterm" || term_ == "xterm-color" || term_ == "xterm-256color") {
     return "]11;" + str + "\\";
   }
 
