@@ -86,7 +86,7 @@ class CDirFmt {
   bool        nocolor_   { false };
   bool        color_     { false };
   std::string env_;
-  int         envLen_;
+  uint        envLen_;
   std::string term_;
   bool        colorTerm_ { true };
   std::string clip_      { "right" };

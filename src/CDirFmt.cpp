@@ -22,7 +22,7 @@ main(int argc, char **argv)
   bool        split     = ! cargs.getBooleanArg("-nosplit") && cargs.getBooleanArg("-split");
   bool        prompt    = cargs.getBooleanArg("-prompt");
   std::string postfix   = cargs.getStringArg ("-postfix");
-  int         break_len = cargs.getIntegerArg("-break_len");
+  int         break_len = int(cargs.getIntegerArg("-break_len"));
   bool        color     = cargs.getBooleanArg("-color");
   bool        nocolor   = cargs.getBooleanArg("-nocolor");
   std::string clip      = cargs.getStringArg ("-clip");
@@ -76,7 +76,7 @@ CDirFmt()
   if (dirFmtEnv)
     env_ = dirFmtEnv;
 
-  envLen_ = env_.size();
+  envLen_ = uint(env_.size());
 
   parseEnv();
 
@@ -92,8 +92,8 @@ CDirFmt()
   char *postfixEnv = getenv("DIRFMT_POSTFIX_COLOR");
 
   if (postfixEnv) {
-    int i      = 0;
-    int envLen = strlen(postfixEnv);
+    uint i      = 0;
+    uint envLen = uint(strlen(postfixEnv));
 
     std::string name;
 
@@ -152,7 +152,7 @@ CDirFmt::
 parseEnv()
 {
   // parse format definition
-  int i = 0;
+  uint i = 0;
 
   while (i < envLen_) {
     // skip space
@@ -162,7 +162,7 @@ parseEnv()
     //---
 
     // find text before '=' and next space
-    int j = i;
+    uint j = i;
 
     std::string name, value;
     std::string bg, fg, fill;
@@ -265,7 +265,7 @@ format(const std::string &dir) const
   // trim directory to max len
   std::string directory = dir;
 
-  int len = directory.size();
+  uint len = uint(directory.size());
 
   if (len > MAX_DIR) {
     directory = directory.substr(0, MAX_DIR);
@@ -282,7 +282,7 @@ format(const std::string &dir) const
     directory = directory.substr(0, len);
   }
 
-  len = directory.size();
+  len = uint(directory.size());
 
   //---
 
@@ -343,16 +343,16 @@ format(const std::string &dir) const
   bool elide   = false;
   bool newline = false;
 
-  int len1 = 0;
+  uint len1 = 0;
 
   for (const auto &part : parts) {
     if (part.color != "")
       std::cout << part.color;
 
-    int len2 = len1 + part.str.size();
+    uint len2 = len1 + uint(part.str.size());
 
     // if new string exceeds break length then elide or truncate
-    if (len2 >= breakLen()) {
+    if (breakLen() > 0 && len2 >= uint(breakLen())) {
       // split onto new line
       if (split_) {
         newline = true;
@@ -362,7 +362,7 @@ format(const std::string &dir) const
       else {
         elide = true;
 
-        int clip_len = breakLen() - len1 - 3;
+        uint clip_len = uint(breakLen()) - len1 - 3;
 
         if (clip() == "left") {
           std::cout << "...";
@@ -390,7 +390,7 @@ format(const std::string &dir) const
     std::cout << "\012\013";
 
 #if 0
-  if (len > breakLen() + 3) {
+  if (breakLen() > 0 && len > uint(breakLen()) + 3) {
     // split onto new line
     if (split_) {
       std::cout << directory;
@@ -398,8 +398,8 @@ format(const std::string &dir) const
     }
     else {
       // TODO: don't split in color
-      int len1 = (breakLen() + 3)/2;
-      int len2 = breakLen() + 3 - len1;
+      uint len1 = (uint(breakLen()) + 3)/2;
+      uint len2 = breakLen() + 3 - len1;
 
       std::string str1 = directory.substr(0, len1);
       std::string str2 = directory.substr(len - len2);
