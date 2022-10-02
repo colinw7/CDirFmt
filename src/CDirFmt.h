@@ -11,10 +11,10 @@ class CDirFmt {
 
  public:
   struct Format {
-    Format(const std::string &name, const std::string &value,
-           const std::string &bg="", const std::string &fg="",
-           const std::string &fill="") :
-     name(name), value(value), bg(bg), fg(fg), fill(fill) {
+    Format(const std::string &name_, const std::string &value_,
+           const std::string &bg_="", const std::string &fg_="",
+           const std::string &fill_="") :
+     name(name_), value(value_), bg(bg_), fg(fg_), fill(fill_) {
     }
 
     std::string name;
@@ -28,8 +28,8 @@ class CDirFmt {
     std::string str;
     std::string color;
 
-    Part(const std::string &str, const std::string &color) :
-     str(str), color(color) {
+    Part(const std::string &str_, const std::string &color_) :
+     str(str_), color(color_) {
     }
   };
 
